@@ -1,12 +1,9 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import ViteYaml from '@modyfi/vite-plugin-yaml'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import eslint from 'vite-plugin-eslint';
 
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    ViteYaml(),
-    react(),
-    tsconfigPaths(),
-  ]
-})
+  base: '/tetris-react/',
+  plugins: [react(), eslint()],
+});
