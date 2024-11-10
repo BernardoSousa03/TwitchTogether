@@ -1,34 +1,24 @@
 import { useReducer, Dispatch } from 'react';
 import { Block, BlockShape, BoardShape, EmptyCell, SHAPES } from '../types';
+import useReducerTogether from './useReducerTogether.d';
+import { useStateTogether, useStateTogetherWithPerUserValues } from 'react-together';
 
-export const BOARD_WIDTH = 10;
+export const BOARD_WIDTH = 20;
 export const BOARD_HEIGHT = 20;
 
 type BoardState = {
   board: BoardShape;
-  droppingRow: number;
-  droppingColumn: number;
-  droppingBlock: Block;
-  droppingShape: BlockShape;
 };
 
 export function useTetrisBoard(): [BoardState, Dispatch<Action>] {
-  const [boardState, dispatchBoardState] = useReducer(
+  const [board, setBoard] = useStateTogether("board", getEmptyBoard());
+
+
+  const [boardState, dispatchBoardState] = useReducerTogether("boardReducer",
     boardReducer,
     {
       board: [],
-      droppingRow: 0,
-      droppingColumn: 0,
-      droppingBlock: Block.I,
-      droppingShape: SHAPES.I.shape,
     },
-    (emptyState) => {
-      const state = {
-        ...emptyState,
-        board: getEmptyBoard(),
-      };
-      return state;
-    }
   );
 
   return [boardState, dispatchBoardState];
@@ -102,49 +92,20 @@ function boardReducer(state: BoardState, action: Action): BoardState {
   switch (action.type) {
     case 'start':
       const firstBlock = getRandomBlock();
+
+
       return {
         board: getEmptyBoard(),
-        droppingRow: 0,
-        droppingColumn: 3,
-        droppingBlock: firstBlock,
-        droppingShape: SHAPES[firstBlock].shape,
       };
-    case 'drop':
-      newState.droppingRow++;
-      break;
     case 'commit':
       return {
         board: [
           ...getEmptyBoard(BOARD_HEIGHT - action.newBoard!.length),
           ...action.newBoard!,
         ],
-        droppingRow: 0,
-        droppingColumn: 3,
-        droppingBlock: action.newBlock!,
-        droppingShape: SHAPES[action.newBlock!].shape,
       };
-    case 'move':
-      const rotatedShape = action.isRotating
-        ? rotateBlock(newState.droppingShape)
-        : newState.droppingShape;
-      let columnOffset = action.isPressingLeft ? -1 : 0;
-      columnOffset = action.isPressingRight ? 1 : columnOffset;
-      if (
-        !hasCollisions(
-          newState.board,
-          rotatedShape,
-          newState.droppingRow,
-          newState.droppingColumn + columnOffset
-        )
-      ) {
-        newState.droppingColumn += columnOffset;
-        newState.droppingShape = rotatedShape;
-      }
-      break;
     default:
-      const unhandledType: never = action.type;
-      throw new Error(`Unhandled action type: ${unhandledType}`);
+      throw new Error(`Unhandled action type: ${action.type}`);
   }
 
-  return newState;
 }
