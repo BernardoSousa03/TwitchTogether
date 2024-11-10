@@ -1,9 +1,18 @@
 .app {
-  display: grid;
   grid-template-areas:
     ". title ."
-    ". game controls";
-  grid-template-columns: repeat(3, 1fr);
+    ". game ."
+    ". controls .";
+}
+
+@media (min-width: 768px) {
+  .app {
+    display: grid;
+    grid-template-areas:
+      ". title ."
+      ". game controls";
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 h1 {
