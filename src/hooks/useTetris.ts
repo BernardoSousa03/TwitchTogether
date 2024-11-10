@@ -48,6 +48,15 @@ export function useTetris() {
     dispatchBoardState({ type: 'start' });
   }, [dispatchBoardState]);
 
+  const endGame = useCallback(() => {
+    setIsPlaying(false);
+    setTickSpeed(null);
+    const randomBlock = getRandomBlock();
+    setDropping({row: 0, column: 3, block: randomBlock, shape: SHAPES[randomBlock].shape});
+    dispatchBoardState({ type: 'start' });
+    setScore(0);
+  }, [dispatchBoardState]);
+
   const commitPosition = useCallback(() => {
     if (!hasCollisions(board, dropping.shape, dropping.row + 1, dropping.column)) {
       setIsCommitting(false);
@@ -238,7 +247,6 @@ export function useTetris() {
 
   const renderedBoard = structuredClone(board) as BoardShape;
   if (isPlaying) {
-    console.log("dropping", dropping);
     Object.entries(allDropping).forEach(([id, itemDropping]) => {
       addShapeToBoard(
         renderedBoard,
@@ -253,6 +261,7 @@ export function useTetris() {
   return {
     board: renderedBoard,
     startGame,
+    endGame,
     isPlaying,
     score,
     upcomingBlocks,

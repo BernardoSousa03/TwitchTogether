@@ -3,7 +3,7 @@ import UpcomingBlocks from './components/UpcomingBlocks';
 import { useTetris } from './hooks/useTetris';
 
 function App() {
-  const { board, startGame, isPlaying, score, upcomingBlocks, handlers } = useTetris();
+  const { board, startGame, endGame, isPlaying, score, upcomingBlocks, handlers } = useTetris();
 
   return (
     <div className="app" {...handlers}>
@@ -12,11 +12,14 @@ function App() {
       <div className="controls">
         <h2>Score: {score}</h2>
         {isPlaying ? (
-          <UpcomingBlocks upcomingBlocks={upcomingBlocks} />
+          <>
+            <UpcomingBlocks upcomingBlocks={upcomingBlocks} />
+            <button onClick={endGame}>End Game</button>
+          </>
         ) : (
           <button onClick={startGame}>New Game</button>
         )}
-      </div>
+      </div> 
     </div>
   );
 }
