@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { useMyId, useStateTogether, useStateTogetherWithPerUserValues } from 'react-together';
 import { Block, BlockShape, BoardShape, EmptyCell, SHAPES } from '../types';
 import { useInterval } from './useInterval';
+import { useSwipeable } from 'react-swipeable'; // Add this import
 import {
   useTetrisBoard,
   hasCollisions,
@@ -9,7 +10,6 @@ import {
   getEmptyBoard,
   getRandomBlock,
 } from './useTetrisBoard';
-import { preview } from 'vite';
 
 enum TickSpeed {
   Normal = 800,
@@ -154,6 +154,14 @@ export function useTetris() {
     },
     [board, dropping]
   );
+
+  const handlers = useSwipeable({
+    onSwipedLeft: () => move(true, false, false),
+    onSwipedRight: () => move(false, true, false),
+    onSwipedUp: () => move(false, false, true),
+    onSwipedDown: () => setTickSpeed(TickSpeed.Fast),
+  });
+
   useInterval(() => {
     if (!isPlaying) {
       return;
@@ -248,6 +256,7 @@ export function useTetris() {
     isPlaying,
     score,
     upcomingBlocks,
+    handlers, // Return handlers for swipeable
   };
 }
 
