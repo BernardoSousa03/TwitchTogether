@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useMyId, useStateTogether, useStateTogetherWithPerUserValues } from 'react-together';
 import { Block, BlockShape, BoardShape, EmptyCell, SHAPES } from '../types';
 import { useInterval } from './useInterval';
 import {
@@ -8,6 +9,7 @@ import {
   getEmptyBoard,
   getRandomBlock,
 } from './useTetrisBoard';
+import { preview } from 'vite';
 
 enum TickSpeed {
   Normal = 800,
@@ -16,14 +18,18 @@ enum TickSpeed {
 }
 
 export function useTetris() {
-  const [score, setScore] = useState(0);
-  const [upcomingBlocks, setUpcomingBlocks] = useState<Block[]>([]);
-  const [isCommitting, setIsCommitting] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [tickSpeed, setTickSpeed] = useState<TickSpeed | null>(null);
+  const [score, setScore] = useStateTogether("score", 0);
+  const [upcomingBlocks, setUpcomingBlocks] = useStateTogether("upcomingBlocks", <Block[]>([]));
+  const [isCommitting, setIsCommitting] = useStateTogether("isCommitting", false);
+  const [isPlaying, setIsPlaying] = useStateTogether("isPlaying", false);
+  const [tickSpeed, setTickSpeed] = useStateTogether("tickSpeed", <TickSpeed | null>(null));
+
+  const [dropping, setDropping, allDropping] = useStateTogetherWithPerUserValues("dropping", {row: 0, column: 3, block: Block.I, shape: SHAPES.I.shape});
+
+  const myId = useMyId();
 
   const [
-    { board, droppingRow, droppingColumn, droppingBlock, droppingShape },
+    { board },
     dispatchBoardState,
   ] = useTetrisBoard();
 
@@ -38,11 +44,12 @@ export function useTetris() {
     setIsCommitting(false);
     setIsPlaying(true);
     setTickSpeed(TickSpeed.Normal);
+
     dispatchBoardState({ type: 'start' });
   }, [dispatchBoardState]);
 
   const commitPosition = useCallback(() => {
-    if (!hasCollisions(board, droppingShape, droppingRow + 1, droppingColumn)) {
+    if (!hasCollisions(board, dropping.shape, dropping.row + 1, dropping.column)) {
       setIsCommitting(false);
       setTickSpeed(TickSpeed.Normal);
       return;
@@ -51,10 +58,10 @@ export function useTetris() {
     const newBoard = structuredClone(board) as BoardShape;
     addShapeToBoard(
       newBoard,
-      droppingBlock,
-      droppingShape,
-      droppingRow,
-      droppingColumn
+      dropping.block,
+      dropping.shape,
+      dropping.row,
+      dropping.column
     );
 
     let numCleared = 0;
@@ -82,14 +89,13 @@ export function useTetris() {
       newBoard: [...getEmptyBoard(BOARD_HEIGHT - newBoard.length), ...newBoard],
       newBlock,
     });
+    setDropping({row: 0, column: 3, block: newBlock!, shape: SHAPES[newBlock!].shape});
+
     setIsCommitting(false);
   }, [
     board,
     dispatchBoardState,
-    droppingBlock,
-    droppingColumn,
-    droppingRow,
-    droppingShape,
+    dropping,
     upcomingBlocks,
   ]);
 
@@ -97,23 +103,57 @@ export function useTetris() {
     if (isCommitting) {
       commitPosition();
     } else if (
-      hasCollisions(board, droppingShape, droppingRow + 1, droppingColumn)
+      hasCollisions(board, dropping.shape, dropping.row + 1, dropping.column)
     ) {
       setTickSpeed(TickSpeed.Sliding);
       setIsCommitting(true);
     } else {
-      dispatchBoardState({ type: 'drop' });
+      setDropping((value) => ({...value, row: value.row + 1}));
     }
   }, [
     board,
     commitPosition,
     dispatchBoardState,
-    droppingColumn,
-    droppingRow,
-    droppingShape,
+    dropping,
     isCommitting,
   ]);
 
+  function rotateBlock(shape: BlockShape): BlockShape {
+    const rows = shape.length;
+    const columns = shape[0].length;
+  
+    const rotated = Array(rows)
+      .fill(null)
+      .map(() => Array(columns).fill(false));
+  
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        rotated[column][rows - 1 - row] = shape[row][column];
+      }
+    }
+  
+    return rotated;
+  }
+
+  const move = useCallback((isPressingLeft : boolean, isPressingRight : boolean, isRotating : boolean) => {
+    const rotatedShape = isRotating
+        ? rotateBlock(dropping.shape)
+        : dropping.shape;
+      let columnOffset = isPressingLeft ? -1 : 0;
+      columnOffset = isPressingRight ? 1 : columnOffset;
+      if (
+        !hasCollisions(
+          board,
+          rotatedShape,
+          dropping.row,
+          dropping.column + columnOffset
+        )
+      ) {
+        setDropping((prev) => ({...prev, column: prev.column + columnOffset, shape: rotatedShape}));
+      }
+    },
+    [board, dropping]
+  );
   useInterval(() => {
     if (!isPlaying) {
       return;
@@ -132,17 +172,9 @@ export function useTetris() {
 
     const updateMovementInterval = () => {
       clearInterval(moveIntervalID);
-      dispatchBoardState({
-        type: 'move',
-        isPressingLeft,
-        isPressingRight,
-      });
+      move(isPressingLeft, isPressingRight, false);
       moveIntervalID = setInterval(() => {
-        dispatchBoardState({
-          type: 'move',
-          isPressingLeft,
-          isPressingRight,
-        });
+        move(isPressingLeft, isPressingRight, false);
       }, 300);
     };
 
@@ -156,10 +188,7 @@ export function useTetris() {
       }
 
       if (event.key === 'ArrowUp') {
-        dispatchBoardState({
-          type: 'move',
-          isRotating: true,
-        });
+        move(false, false, true);
       }
 
       if (event.key === 'ArrowLeft') {
@@ -201,13 +230,16 @@ export function useTetris() {
 
   const renderedBoard = structuredClone(board) as BoardShape;
   if (isPlaying) {
-    addShapeToBoard(
-      renderedBoard,
-      droppingBlock,
-      droppingShape,
-      droppingRow,
-      droppingColumn
-    );
+    console.log("dropping", dropping);
+    Object.entries(allDropping).forEach(([id, itemDropping]) => {
+      addShapeToBoard(
+        renderedBoard,
+        itemDropping.block,
+        itemDropping.shape,
+        itemDropping.row,
+        itemDropping.column
+      );
+    });
   }
 
   return {
@@ -243,14 +275,16 @@ function addShapeToBoard(
   droppingRow: number,
   droppingColumn: number
 ) {
-  droppingShape
-    .filter((row) => row.some((isSet) => isSet))
-    .forEach((row: boolean[], rowIndex: number) => {
-      row.forEach((isSet: boolean, colIndex: number) => {
-        if (isSet) {
-          board[droppingRow + rowIndex][droppingColumn + colIndex] =
-            droppingBlock;
-        }
+  if (droppingShape) {
+    droppingShape
+      .filter((row) => row.some((isSet) => isSet))
+      .forEach((row: boolean[], rowIndex: number) => {
+        row.forEach((isSet: boolean, colIndex: number) => {
+          if (isSet) {
+            board[droppingRow + rowIndex][droppingColumn + colIndex] =
+              droppingBlock;
+          }
+        });
       });
-    });
+  }
 }
