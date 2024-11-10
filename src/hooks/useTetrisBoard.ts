@@ -11,8 +11,6 @@ type BoardState = {
 };
 
 export function useTetrisBoard(): [BoardState, Dispatch<Action>] {
-  const [board, setBoard] = useStateTogether("board", getEmptyBoard());
-
 
   const [boardState, dispatchBoardState] = useReducerTogether("boardReducer",
     boardReducer,
@@ -60,23 +58,6 @@ export function getRandomBlock(): Block {
   return blockValues[Math.floor(Math.random() * blockValues.length)] as Block;
 }
 
-function rotateBlock(shape: BlockShape): BlockShape {
-  const rows = shape.length;
-  const columns = shape[0].length;
-
-  const rotated = Array(rows)
-    .fill(null)
-    .map(() => Array(columns).fill(false));
-
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      rotated[column][rows - 1 - row] = shape[row][column];
-    }
-  }
-
-  return rotated;
-}
-
 type Action = {
   type: 'start' | 'drop' | 'commit' | 'move';
   newBoard?: BoardShape;
@@ -87,13 +68,8 @@ type Action = {
 };
 
 function boardReducer(state: BoardState, action: Action): BoardState {
-  let newState = { ...state };
-
   switch (action.type) {
     case 'start':
-      const firstBlock = getRandomBlock();
-
-
       return {
         board: getEmptyBoard(),
       };

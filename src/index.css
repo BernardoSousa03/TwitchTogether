@@ -2,7 +2,7 @@
   grid-template-areas:
     ". title ."
     ". game ."
-    ". controls .";
+    ". controls ."
 }
 
 @media (min-width: 768px) {
